@@ -1,0 +1,2 @@
+class ContentExtractionError(Exception):
+    pass
