@@ -7,5 +7,5 @@ class WagtailAIConfig(AppConfig):
     name = "wagtailai"
     verbose_name = _("Wagtail AI")
 
-    def ready(self) -> None:
-        import wagtailai.signals
+    def ready(self) -> None:  # noqa: PLR6301
+        import wagtailai.signals  # noqa: PLC0415

@@ -10,6 +10,16 @@ type ProcessorFunc = Callable[[Any], str]
 PageType = TypeVar("PageType", bound=Page)
 PageSubclass = TypeVar("PageSubclass", bound=type[Page])
 
+META_FIELDS: list[str] = [
+    "title",
+    "seo_title",
+    "search_description",
+    "meta_keywords",
+    "url",
+    "slug",
+    "last_published_at",
+]
+
 
 class AIPanel(Panel):
     """Panel for manage AI indexing"""
@@ -37,25 +47,69 @@ class AIPanel(Panel):
         return str(value) if value else ""
 
 
+class MetaAIPanel(AIPanel):
+    """Special panel for page metadata"""
+    def __init__(self, meta_field: str, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.meta_field = meta_field
+
+    def get_value(self, instance: Page) -> str:
+        """Handling special meta-fields"""
+        match self.meta_field:
+            case "url":
+                return instance.get_full_url()
+            case "title":
+                return instance.title
+            case "seo_title":
+                return getattr(instance, self.meta_field, "") or instance.title
+            case "search_description":
+                return getattr(instance, self.meta_field, "") or ""
+            case "meta_keywords":
+                return getattr(instance, self.meta_field, "") or ""
+            case "slug":
+                return instance.slug or ""
+            case "last_published_at":
+                return instance.last_published_at.isoformat() if instance.last_published_at else ""
+        return super().get_value(instance)
+
+
 class AIPanelGroup(Panel):
     """Group of AI panels"""
-    def __init__(self, panels: Sequence[Panel], **kwargs) -> None:
+    def __init__(self, panels: Sequence[Panel], include_meta: bool = True, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.panels = panels
+        self.panels = list(panels)
+        if include_meta:
+            self.panels.extend(self.default_meta_panels)
+
+    @property
+    def default_meta_panels(self) -> list[MetaAIPanel]:
+        return [
+            MetaAIPanel(meta_field="title", heading="Page Title"),
+            MetaAIPanel(meta_field="seo_title", heading="SEO Title"),
+            MetaAIPanel(meta_field="search_description", heading="Meta Description"),
+            MetaAIPanel(meta_field="meta_keywords", heading="Meta Keywords"),
+            MetaAIPanel(meta_field="url", heading="Page URL"),
+            MetaAIPanel(meta_field="slug", heading="Page Slug"),
+            MetaAIPanel(meta_field="last_published_at", heading="Last Updated"),
+        ]
 
     def get_ai_content(self, instance: Page) -> str:
         """Generate content using all AI panels"""
         content: list[str] = []
         for panel in self.panels:
-            if isinstance(panel, AIPanel):
+            if isinstance(panel, (AIPanel, MetaAIPanel)):
                 value = panel.get_value(instance)
-                if value:
-                    content.append(value)
+                if value and value.strip():
+                    if isinstance(panel, MetaAIPanel):
+                        content.append(f"[META] {panel.heading or panel.meta_field}]: {value}")
+                    else:
+                        content.append(value)
         return "\n\n".join(content)
 
 
 class AIIndexablePageMixin:
     ai_panels: ClassVar[list[AIPanel]] = []
+    include_meta_fields: ClassVar[bool] = True
 
     @property
     def ai_panel_group(self) -> AIPanelGroup:
@@ -65,11 +119,16 @@ class AIIndexablePageMixin:
         return self.ai_panel_group.get_ai_content(self)
 
     def get_ai_fields(self) -> list[str]:
-        return [panel.field_name for panel in self.ai_panels if isinstance(panel, AIPanel)]
+        fields: list[str] = [
+            panel.field_name for panel in self.ai_panels if isinstance(panel, AIPanel)
+        ]
+        if self.include_meta_fields:
+            fields.extend(META_FIELDS)
+        return fields
 
 
 def ai_indexable[PageSubclass: type[Page]](
-        *panels: AIPanel | PageSubclass
+        *panels: AIPanel | PageSubclass, include_meta: bool = True
 ) -> Callable[[PageSubclass], PageSubclass] | PageSubclass:
     """Декоратор для добавления индексации полей страницы для AI-ассистента"""
     if len(panels) == 1 and isinstance(panels[0], type) and issubclass(panels[0], Page):
@@ -79,6 +138,7 @@ def ai_indexable[PageSubclass: type[Page]](
         if not issubclass(cls, Page):
             raise TypeError("AI-indexable class must be a subclass of Page!")
         cls.ai_panels = list(panels)
+        cls.include_meta_fields = include_meta
 
         @property
         def ai_panel_group(self) -> AIPanelGroup:
@@ -88,7 +148,10 @@ def ai_indexable[PageSubclass: type[Page]](
             return self.ai_panel_group.get_ai_content(self)
 
         def get_ai_fields(self) -> list[str]:
-            return [ai_panel.field_name for ai_panel in self.ai_panels]
+            fields: list[str] = [ai_panel.field_name for ai_panel in self.ai_panels]
+            if self.include_meta_fields:
+                fields.extend(META_FIELDS)
+            return fields
 
         cls.ai_panel_group = ai_panel_group
         cls.get_ai_content = get_ai_content
