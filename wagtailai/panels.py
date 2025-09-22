@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, TypeAlias
+from typing import Any, ClassVar, TypeVar, cast
 
 from collections.abc import Callable, Sequence
 
@@ -6,7 +6,9 @@ from wagtail.admin.panels import Panel
 from wagtail.models import Page
 from wagtail.rich_text import RichText
 
-ProcessorFunc: TypeAlias = Callable[[Any], str]
+type ProcessorFunc = Callable[[Any], str]
+PageType = TypeVar("PageType", bound=Page)
+PageSubclass = TypeVar("PageSubclass", bound=type[Page])
 
 
 class AIPanel(Panel):
@@ -64,3 +66,32 @@ class AIIndexablePageMixin:
 
     def get_ai_fields(self) -> list[str]:
         return [panel.field_name for panel in self.ai_panels if isinstance(panel, AIPanel)]
+
+
+def ai_indexable[PageSubclass: type[Page]](
+        *panels: AIPanel | PageSubclass
+) -> Callable[[PageSubclass], PageSubclass] | PageSubclass:
+    """Декоратор для добавления индексации полей страницы для AI-ассистента"""
+    if len(panels) == 1 and isinstance(panels[0], type) and issubclass(panels[0], Page):
+        return cast(PageSubclass, panels[0])
+
+    def decorator(cls: PageSubclass) -> PageSubclass:
+        if not issubclass(cls, Page):
+            raise TypeError("AI-indexable class must be a subclass of Page!")
+        cls.ai_panels = list(panels)
+
+        @property
+        def ai_panel_group(self) -> AIPanelGroup:
+            return AIPanelGroup(self.ai_panels)
+
+        def get_ai_content(self) -> str:
+            return self.ai_panel_group.get_ai_content(self)
+
+        def get_ai_fields(self) -> list[str]:
+            return [ai_panel.field_name for ai_panel in self.ai_panels]
+
+        cls.ai_panel_group = ai_panel_group
+        cls.get_ai_content = get_ai_content
+        cls.get_ai_fields = get_ai_fields
+        return cls
+    return decorator
