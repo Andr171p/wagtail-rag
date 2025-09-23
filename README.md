@@ -1,5 +1,10 @@
 # Wagtailai
 
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-4.2+-green.svg)](https://djangoproject.com)
+[![Wagtail](https://img.shields.io/badge/Wagtail-5.0+-blue.svg)](https://wagtail.org)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ## Установка
 
 **pip**
