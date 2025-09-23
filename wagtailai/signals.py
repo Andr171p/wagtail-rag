@@ -1,4 +1,3 @@
-import contextlib
 import logging
 
 from django.dispatch import receiver
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 def page_published_handler(
         sender: Page, instance: Page, revision: Revision, **kwargs  # noqa: ARG001
 ) -> None:
-    with contextlib.suppress(Exception):
+    try:
         if not hasattr(instance, "to_ai_json"):
             logger.debug("Page %s does not support AI indexing!", instance.id)
             return
@@ -21,3 +20,5 @@ def page_published_handler(
         logger.info("AI indexing page: %s (ID %s)", instance.title, instance.id)
         logger.info("AI fields detected: %s", ai_fields)
         logger.info("Content length: %s characters", len(ai_json["content"]))
+    except Exception:
+        logger.exception("Error occurred while handle page_published, error: {e}")
