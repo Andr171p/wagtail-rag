@@ -2,11 +2,14 @@ from typing import Any, ClassVar, TypedDict, TypeVar, cast
 
 from collections.abc import Callable, Sequence
 
+from html_to_markdown import convert_to_markdown
 from wagtail.admin.panels import Panel
+from wagtail.fields import StreamField
 from wagtail.models import Page
 from wagtail.rich_text import RichText
 
-from wagtailai.utils import get_page_seo_metadata
+from .fields_processors import process_stream_field
+from .utils import get_page_seo_metadata
 
 type ProcessorFunc = Callable[[Any], str]
 PageType = TypeVar("PageType", bound=Page)
@@ -53,7 +56,9 @@ class AIPanel(Panel):
         if self.processor:
             value = self.processor(value)
         if isinstance(value, RichText):
-            value = value.source
+            value = convert_to_markdown(value.source)
+        if isinstance(value, StreamField):
+            value = process_stream_field(value)
         elif hasattr(value, "all"):
             items: list[str] = [str(item) for item in value.all()]
             value = ", ".join(items)
@@ -153,7 +158,7 @@ class AIIndexablePageMixin:
     def ai_panel_group(self) -> AIPanelGroup:
         return AIPanelGroup(self.ai_panels)
 
-    def get_ai_content(self: Page) -> str:
+    def get_ai_content(self: "AIIndexablePageMixin" | Page) -> str:
         return self.ai_panel_group.get_ai_content(self)
 
     def get_ai_fields(self) -> list[str]:
@@ -164,7 +169,7 @@ class AIIndexablePageMixin:
             fields.extend(META_FIELDS)
         return fields
 
-    def to_ai_json(self: Page) -> AIPageJSON:
+    def to_ai_json(self: "AIIndexablePageMixin" | Page) -> AIPageJSON:
         return self.ai_panel_group.to_ai_json(self)
 
 

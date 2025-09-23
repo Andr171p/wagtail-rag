@@ -2,6 +2,9 @@ import hashlib
 import json
 
 from wagtail.models import Page
+from wagtail.rich_text import RichText
+from wagtail.fields import StreamField
+from wagtail.images import get_image_model
 
 
 def get_page_seo_metadata(instance: Page) -> dict[str, str | list[str]]:
