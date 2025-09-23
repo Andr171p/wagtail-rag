@@ -17,7 +17,7 @@ def get_page_seo_metadata(instance: Page) -> dict[str, str | list[str]]:
     if hasattr(instance, "tags") and instance.tags:
         tags = [tag.name for tag in instance.tags.all()]
     return {
-        "title": instance.seo_title or instance.title,
+        "seo_title": instance.seo_title or instance.title,
         "search_description": getattr(instance, "search_description", "") or "",
         "meta_keywords": meta_keywords,
         "tags": tags,
