@@ -25,7 +25,7 @@ def get_page_seo_metadata(instance: Page) -> dict[str, str | list[str]]:
 
 
 def get_page_hash(page: Page) -> str:
-    """Генерирует хэш контента страницы для отслеживания изменений"""
+    """Generate page hash for tracking changes"""
     content: dict[str, str] = {
         "id": page.id,
         "title": page.title,
