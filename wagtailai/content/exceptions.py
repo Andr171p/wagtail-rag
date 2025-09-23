@@ -1,2 +1,0 @@
-class ContentExtractionError(Exception):
-    pass

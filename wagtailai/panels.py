@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, TypeVar, cast
+from typing import Any, ClassVar, TypedDict, TypeVar, cast
 
 from collections.abc import Callable, Sequence
 
@@ -6,11 +6,14 @@ from wagtail.admin.panels import Panel
 from wagtail.models import Page
 from wagtail.rich_text import RichText
 
+from wagtailai.utils import get_page_seo_metadata
+
 type ProcessorFunc = Callable[[Any], str]
 PageType = TypeVar("PageType", bound=Page)
 PageSubclass = TypeVar("PageSubclass", bound=type[Page])
 
 META_FIELDS: list[str] = [
+    "id",
     "title",
     "seo_title",
     "search_description",
@@ -19,6 +22,16 @@ META_FIELDS: list[str] = [
     "slug",
     "last_published_at",
 ]
+
+
+class AIPageJSON(TypedDict):
+    id: int
+    url: str
+    slug: str
+    title: str
+    seo_metadata: dict[str, str | list[str]]
+    content: str
+    last_published_at: str
 
 
 class AIPanel(Panel):
@@ -56,6 +69,8 @@ class MetaAIPanel(AIPanel):
     def get_value(self, instance: Page) -> str:
         """Handling special meta-fields"""
         match self.meta_field:
+            case "id":
+                return str(instance.id)
             case "url":
                 return instance.get_full_url()
             case "title":
@@ -80,6 +95,29 @@ class AIPanelGroup(Panel):
         self.panels = list(panels)
         if include_meta:
             self.panels.extend(self.default_meta_panels)
+
+    def generate_ai_content_markdown(self, instance: Page) -> str:
+        """Generate Markdown content from AI panels"""
+        ai_content_parts: list[str] = []
+        for panel in self.panels:
+            if isinstance(panel, AIPanel):
+                value = panel.get_value(instance)
+                if value and value.strip():
+                    if panel.heading:
+                        ai_content_parts.append(f"## {panel.heading}")
+                    ai_content_parts.append(value)
+        return "\n\n".join(ai_content_parts)
+
+    def to_ai_json(self, instance: Page) -> AIPageJSON:
+        return {
+            "id": instance.id,
+            "url": instance.get_full_url() or "",
+            "slug": instance.slug,
+            "title": instance.title,
+            "seo_metadata": get_page_seo_metadata(instance),
+            "content": self.generate_ai_content_markdown(instance),
+            "last_published_at": instance.last_published_at.isoformat(),
+        }
 
     @property
     def default_meta_panels(self) -> list[MetaAIPanel]:
@@ -126,6 +164,9 @@ class AIIndexablePageMixin:
             fields.extend(META_FIELDS)
         return fields
 
+    def to_ai_json(self: Page) -> AIPageJSON:
+        return self.ai_panel_group.to_ai_json(self)
+
 
 def ai_indexable[PageSubclass: type[Page]](
         *panels: AIPanel | PageSubclass, include_meta: bool = True
@@ -153,8 +194,12 @@ def ai_indexable[PageSubclass: type[Page]](
                 fields.extend(META_FIELDS)
             return fields
 
+        def to_ai_json(self) -> AIPageJSON:
+            return self.ai_panel_group.to_ai_json(self)
+
         cls.ai_panel_group = ai_panel_group
         cls.get_ai_content = get_ai_content
         cls.get_ai_fields = get_ai_fields
+        cls.to_ai_json = to_ai_json
         return cls
     return decorator
