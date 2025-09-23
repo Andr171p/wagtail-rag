@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "wagtailai"
 version = "0.1.0"
@@ -9,6 +13,10 @@ dependencies = [
     "ruff>=0.13.1",
     "wagtail>=7.1.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Andr171p/wagtailai.git"
+Repository = "https://github.com/Andr171p/wagtailai.git"
 
 [tool.ruff]
 line-length = 99
