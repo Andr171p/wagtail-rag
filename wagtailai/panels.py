@@ -65,6 +65,8 @@ class AIPanel(Panel):
             value = ", ".join(items)
         else:
             value = convert_to_markdown(value)
+        if self.field_name == "title":
+            return f"# {value}"
         return str(value) if value else ""
 
 
@@ -159,7 +161,7 @@ class AIIndexablePageMixin:
 
     @property
     def ai_panel_group(self) -> AIPanelGroup:
-        return AIPanelGroup(self.ai_panels)
+        return AIPanelGroup(self.ai_panels, self.include_meta_fields)
 
     def get_ai_content(self: Page) -> str:
         return self.ai_panel_group.get_ai_content(self)
@@ -191,7 +193,7 @@ def ai_indexable[PageSubclass: type[Page]](
 
         @property
         def ai_panel_group(self) -> AIPanelGroup:
-            return AIPanelGroup(self.ai_panels)
+            return AIPanelGroup(self.ai_panels, self.include_meta_fields)
 
         def get_ai_content(self) -> str:
             return self.ai_panel_group.get_ai_content(self)
