@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 
 from html_to_markdown import convert_to_markdown
 from wagtail.admin.panels import Panel
+from wagtail.blocks import StreamValue
 from wagtail.fields import StreamField
 from wagtail.models import Page
 from wagtail.rich_text import RichText
@@ -57,7 +58,7 @@ class AIPanel(Panel):
             value = self.processor(value)
         if isinstance(value, RichText):
             value = convert_to_markdown(value.source)
-        elif isinstance(value, StreamField):
+        elif isinstance(value, StreamValue):
             print("Обработка StreamField")
             value = process_stream_field(value)
         elif hasattr(value, "all"):

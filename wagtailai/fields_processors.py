@@ -1,4 +1,5 @@
 from html_to_markdown import convert_to_markdown
+from wagtail.blocks import StreamValue
 from wagtail.fields import StreamField
 
 # def process_stream_field(stream_field: StreamField) -> str:
@@ -10,7 +11,7 @@ from wagtail.fields import StreamField
 #    ])  # noqa: ERA001, RUF100
 
 
-def process_stream_field(stream_field: StreamField) -> str:
+def process_stream_field(stream_field: StreamValue) -> str:
     parts: list[str] = []
     for block in stream_field:
         block_value = block.value
