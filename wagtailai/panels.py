@@ -55,7 +55,9 @@ class AIPanel(Panel):
             value = value()
         if self.processor:
             value = self.processor(value)
-        if isinstance(value, RichText):
+        if self.field_name == "title":
+            value = f"# {value}"
+        elif isinstance(value, RichText):
             value = convert_to_markdown(value.source)
         elif isinstance(value, StreamValue):
             value = process_stream_field(value)
@@ -64,8 +66,6 @@ class AIPanel(Panel):
             value = ", ".join(items)
         else:
             value = convert_to_markdown(value)
-        if self.field_name == "title":
-            return f"# {value}"
         return str(value) if value else ""
 
 
