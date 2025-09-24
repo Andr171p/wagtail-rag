@@ -58,10 +58,13 @@ class AIPanel(Panel):
         if isinstance(value, RichText):
             value = convert_to_markdown(value.source)
         elif isinstance(value, StreamField):
+            print("Обработка StreamField")
             value = process_stream_field(value)
         elif hasattr(value, "all"):
             items: list[str] = [str(item) for item in value.all()]
             value = ", ".join(items)
+        else:
+            value = convert_to_markdown(value)
         return str(value) if value else ""
 
 
