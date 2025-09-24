@@ -57,7 +57,7 @@ class AIPanel(Panel):
             value = self.processor(value)
         if isinstance(value, RichText):
             value = convert_to_markdown(value.source)
-        if isinstance(value, StreamField):
+        elif isinstance(value, StreamField):
             value = process_stream_field(value)
         elif hasattr(value, "all"):
             items: list[str] = [str(item) for item in value.all()]
