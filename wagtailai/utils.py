@@ -1,7 +1,20 @@
 import hashlib
 import json
 
+from django.core.cache import cache
 from wagtail.models import Page
+
+from .models import RAGSettings
+
+
+def get_rag_settings() -> RAGSettings:
+    """Fetch RAG settings from cache"""
+    cache_key = "rag_settings"
+    rag_settings = cache.get(cache_key)
+    if rag_settings is None:
+        rag_settings = RAGSettings.load()
+        cache.set(cache_key, rag_settings, 24 * 60)
+    return rag_settings
 
 
 def get_page_seo_metadata(instance: Page) -> dict[str, str | list[str]]:
