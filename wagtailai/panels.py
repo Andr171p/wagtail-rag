@@ -158,7 +158,7 @@ class AIIndexablePageMixin:
     def ai_panel_group(self) -> AIPanelGroup:
         return AIPanelGroup(self.ai_panels)
 
-    def get_ai_content(self: "AIIndexablePageMixin" | Page) -> str:
+    def get_ai_content(self: Page) -> str:
         return self.ai_panel_group.get_ai_content(self)
 
     def get_ai_fields(self) -> list[str]:
@@ -169,7 +169,7 @@ class AIIndexablePageMixin:
             fields.extend(META_FIELDS)
         return fields
 
-    def to_ai_json(self: "AIIndexablePageMixin" | Page) -> AIPageJSON:
+    def to_ai_json(self: Page) -> AIPageJSON:
         return self.ai_panel_group.to_ai_json(self)
 
 
