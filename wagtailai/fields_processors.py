@@ -1,6 +1,7 @@
 from html_to_markdown import convert_to_markdown
 from wagtail.blocks import StreamValue
-from wagtail.fields import StreamField
+
+# from wagtail.fields import StreamField  # noqa: ERA001
 
 # def process_stream_field(stream_field: StreamField) -> str:
 #    """Process StreamField to Markdown format"""
@@ -12,13 +13,14 @@ from wagtail.fields import StreamField
 
 
 def process_stream_field(stream_field: StreamValue) -> str:
+    """Process StreamField to Markdown format"""
     parts: list[str] = []
     for block in stream_field:
         block_value = block.value
         if hasattr(block_value, "source") and isinstance(block_value.source, str):
             parts.append(convert_to_markdown(block_value.source))
         elif isinstance(block_value, dict):
-            block_content: list[...] = []
+            block_content: list[str] = []
             for key, value in block_value.items():
                 if isinstance(value, str):
                     block_content.append(f"**{key}**: {value}")

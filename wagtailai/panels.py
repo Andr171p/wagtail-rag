@@ -5,7 +5,6 @@ from collections.abc import Callable, Sequence
 from html_to_markdown import convert_to_markdown
 from wagtail.admin.panels import Panel
 from wagtail.blocks import StreamValue
-from wagtail.fields import StreamField
 from wagtail.models import Page
 from wagtail.rich_text import RichText
 
@@ -113,7 +112,7 @@ class AIPanelGroup(Panel):
                 value = panel.get_value(instance)
                 if value and value.strip():
                     if panel.heading:
-                        ai_content_parts.append(f"## {panel.heading}")
+                        ai_content_parts.append(f"## META: {panel.heading}")
                     ai_content_parts.append(value)
         return "\n\n".join(ai_content_parts)
 
