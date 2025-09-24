@@ -17,6 +17,7 @@ def page_published_handler(
             return
         ai_json = instance.to_ai_json()
         ai_fields = instance.get_ai_fields()
+        print(ai_json)
         logger.info("AI indexing page: %s (ID %s)", instance.title, instance.id)
         logger.info("AI fields detected: %s", ai_fields)
         logger.info("Content length: %s characters", len(ai_json["content"]))
