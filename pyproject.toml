@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "wagtailai"
+name = "wagtail-rag"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
@@ -16,8 +16,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Andr171p/wagtailai.git"
-Repository = "https://github.com/Andr171p/wagtailai.git"
+Homepage = "https://github.com/Andr171p/wagtail-rag.git"
+Repository = "https://github.com/Andr171p/wagtail-rag.git"
 
 [tool.ruff]
 line-length = 99

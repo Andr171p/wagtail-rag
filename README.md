@@ -1,4 +1,4 @@
-# Wagtailai
+# Wagtail-RAG
 
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-4.2+-green.svg)](https://djangoproject.com)
@@ -9,17 +9,17 @@
 
 **pip**
 ```shell
-pip install "git+https://github.com/Andr171p/wagtailai.git"
+pip install "git+https://github.com/Andr171p/wagtail-rag.git"
 ```
 
 **poetry**
 ```shell
-poetry add "git+https://github.com/Andr171p/wagtailai.git"
+poetry add "git+https://github.com/Andr171p/wagtail-rag.git"
 ```
 
 **uv**
 ```shell
-uv add "git+https://github.com/Andr171p/wagtailai.git"
+uv add "git+https://github.com/Andr171p/wagtail-rag.git"
 ```
 
 ## Настройка в проекте
@@ -27,7 +27,7 @@ uv add "git+https://github.com/Andr171p/wagtailai.git"
 # settings.py
 INSTALLED_APPS = [
     # ... другие приложения
-    "wagtailai",  # ваше приложение
+    "wagtail_rag",  # ваше приложение
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
@@ -50,13 +50,13 @@ from django.db import models
 from wagtail.models import Page
 from wagtail.fields import RichTextField
 from wagtail.admin.panels import FieldPanel
-from wagtailai.panels import RAGFieldPanel, register_rag_indexable
+from wagtail_rag.panels import RAGFieldPanel, register_rag_indexable
 
 
 @register_rag_indexable(
     RAGFieldPanel("headline"),
     RAGFieldPanel("intro"),
-    RAGFieldPanel("body"), 
+    RAGFieldPanel("body"),
     include_meta=True
 )
 class MyPage(Page):
