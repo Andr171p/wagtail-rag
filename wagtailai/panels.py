@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, TypedDict, TypeVar, cast
+from typing import Any, ClassVar, TypedDict, TypeVar, cast, override
 
 from collections.abc import Callable, Sequence
 
@@ -8,10 +8,9 @@ from wagtail.blocks import StreamValue
 from wagtail.models import Page
 from wagtail.rich_text import RichText
 
-from .fields_processors import process_stream_field
-from .utils import get_page_seo_metadata
+from .utils import convert_stream_field_to_markdown, get_page_seo_metadata
 
-type ProcessorFunc = Callable[[Any], str]
+type ContentProcessor = Callable[[Any], str]
 PageType = TypeVar("PageType", bound=Page)
 PageSubclass = TypeVar("PageSubclass", bound=type[Page])
 
@@ -27,7 +26,7 @@ META_FIELDS: list[str] = [
 ]
 
 
-class AIPageJSON(TypedDict):
+class RAGIndexableData(TypedDict):
     id: int
     url: str
     slug: str
@@ -37,12 +36,12 @@ class AIPageJSON(TypedDict):
     last_published_at: str
 
 
-class AIPanel(Panel):
+class RAGFieldPanel(Panel):
     """Panel for manage AI indexing"""
     def __init__(
             self,
-            field_name: str = "ai_field",
-            processor: ProcessorFunc | None = None,
+            field_name: str = "rag_field",
+            processor: ContentProcessor | None = None,
             **kwargs
     ) -> None:
         super().__init__(**kwargs)
@@ -60,7 +59,7 @@ class AIPanel(Panel):
         elif isinstance(value, RichText):
             value = convert_to_markdown(value.source)
         elif isinstance(value, StreamValue):
-            value = process_stream_field(value)
+            value = convert_stream_field_to_markdown(value)
         elif hasattr(value, "all"):
             items: list[str] = [str(item) for item in value.all()]
             value = ", ".join(items)
@@ -69,12 +68,13 @@ class AIPanel(Panel):
         return str(value) if value else ""
 
 
-class MetaAIPanel(AIPanel):
+class MetaRAGFieldPanel(RAGFieldPanel):
     """Special panel for page metadata"""
     def __init__(self, meta_field: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self.meta_field = meta_field
 
+    @override
     def get_value(self, instance: Page) -> str:
         """Handling special meta-fields"""
         match self.meta_field:
@@ -97,88 +97,74 @@ class MetaAIPanel(AIPanel):
         return super().get_value(instance)
 
 
-class AIPanelGroup(Panel):
-    """Group of AI panels"""
+class RAGPanelCollection(Panel):
     def __init__(self, panels: Sequence[Panel], include_meta: bool = True, **kwargs) -> None:
         super().__init__(**kwargs)
         self.panels = list(panels)
         if include_meta:
             self.panels.extend(self.default_meta_panels)
 
-    def generate_ai_content_markdown(self, instance: Page) -> str:
-        """Generate Markdown content from AI panels"""
-        ai_content_parts: list[str] = []
+    def get_markdown_content(self, instance: Page) -> str:
+        """Generate Markdown content from RAG panels"""
+        content_parts: list[str] = []
         for panel in self.panels:
-            if isinstance(panel, AIPanel):
+            if isinstance(panel, RAGFieldPanel):
                 value = panel.get_value(instance)
                 if value and value.strip():
                     if panel.heading:
-                        ai_content_parts.append(f"## META: {panel.heading}")
-                    ai_content_parts.append(value)
-        return "\n\n".join(ai_content_parts)
+                        content_parts.append(f"## META: {panel.heading}")
+                    content_parts.append(value)
+        return "\n\n".join(content_parts)
 
-    def to_ai_json(self, instance: Page) -> AIPageJSON:
+    def get_rag_indexable_data(self, instance: Page) -> RAGIndexableData:
         return {
             "id": instance.id,
             "url": instance.get_full_url() or "",
             "slug": instance.slug,
             "title": instance.title,
             "seo_metadata": get_page_seo_metadata(instance),
-            "content": self.generate_ai_content_markdown(instance),
+            "content": self.get_markdown_content(instance),
             "last_published_at": instance.last_published_at.isoformat(),
         }
 
     @property
-    def default_meta_panels(self) -> list[MetaAIPanel]:
+    def default_meta_panels(self) -> list[MetaRAGFieldPanel]:
         return [
-            MetaAIPanel(meta_field="title", heading="Page Title"),
-            MetaAIPanel(meta_field="seo_title", heading="SEO Title"),
-            MetaAIPanel(meta_field="search_description", heading="Meta Description"),
-            MetaAIPanel(meta_field="meta_keywords", heading="Meta Keywords"),
-            MetaAIPanel(meta_field="url", heading="Page URL"),
-            MetaAIPanel(meta_field="slug", heading="Page Slug"),
-            MetaAIPanel(meta_field="last_published_at", heading="Last Updated"),
+            MetaRAGFieldPanel(meta_field="title", heading="Page Title"),
+            MetaRAGFieldPanel(meta_field="seo_title", heading="SEO Title"),
+            MetaRAGFieldPanel(meta_field="search_description", heading="Meta Description"),
+            MetaRAGFieldPanel(meta_field="meta_keywords", heading="Meta Keywords"),
+            MetaRAGFieldPanel(meta_field="url", heading="Page URL"),
+            MetaRAGFieldPanel(meta_field="slug", heading="Page Slug"),
+            MetaRAGFieldPanel(meta_field="last_published_at", heading="Last Updated"),
         ]
 
-    def get_ai_content(self, instance: Page) -> str:
-        """Generate content using all AI panels"""
-        content: list[str] = []
-        for panel in self.panels:
-            if isinstance(panel, (AIPanel, MetaAIPanel)):
-                value = panel.get_value(instance)
-                if value and value.strip():
-                    if isinstance(panel, MetaAIPanel):
-                        content.append(f"[META] {panel.heading or panel.meta_field}]: {value}")
-                    else:
-                        content.append(value)
-        return "\n\n".join(content)
 
-
-class AIIndexablePageMixin:
-    ai_panels: ClassVar[list[AIPanel]] = []
+class RAGIndexableMixin:
+    rag_panels: ClassVar[list[RAGFieldPanel]] = []
     include_meta_fields: ClassVar[bool] = True
 
     @property
-    def ai_panel_group(self) -> AIPanelGroup:
-        return AIPanelGroup(self.ai_panels, self.include_meta_fields)
+    def rag_panel_collection(self) -> RAGPanelCollection:
+        return RAGPanelCollection(self.rag_panels, self.include_meta_fields)
 
-    def get_ai_content(self: Page) -> str:
-        return self.ai_panel_group.get_ai_content(self)
+    def get_markdown_content(self: Page) -> str:
+        return self.rag_panel_collection.get_markdown_content(self)
 
-    def get_ai_fields(self) -> list[str]:
+    def get_rag_fields(self) -> list[str]:
         fields: list[str] = [
-            panel.field_name for panel in self.ai_panels if isinstance(panel, AIPanel)
+            panel.field_name for panel in self.rag_panels if isinstance(panel, RAGFieldPanel)
         ]
         if self.include_meta_fields:
             fields.extend(META_FIELDS)
         return fields
 
-    def to_ai_json(self: Page) -> AIPageJSON:
-        return self.ai_panel_group.to_ai_json(self)
+    def get_rag_indexable_data(self: Page) -> RAGIndexableData:
+        return self.rag_panel_collection.get_rag_indexable_data(self)
 
 
-def ai_indexable[PageSubclass: type[Page]](
-        *panels: AIPanel | PageSubclass, include_meta: bool = True
+def register_rag_indexable[PageSubclass: type[Page]](
+        *panels: RAGFieldPanel | PageSubclass, include_meta: bool = True
 ) -> Callable[[PageSubclass], PageSubclass] | PageSubclass:
     """Декоратор для добавления индексации полей страницы для AI-ассистента"""
     if len(panels) == 1 and isinstance(panels[0], type) and issubclass(panels[0], Page):
@@ -186,29 +172,29 @@ def ai_indexable[PageSubclass: type[Page]](
 
     def decorator(cls: PageSubclass) -> PageSubclass:
         if not issubclass(cls, Page):
-            raise TypeError("AI-indexable class must be a subclass of Page!")
-        cls.ai_panels = list(panels)
+            raise TypeError("RAG-indexable class must be a subclass of Page!")
+        cls.rag_panels = list(panels)
         cls.include_meta_fields = include_meta
 
         @property
-        def ai_panel_group(self) -> AIPanelGroup:
-            return AIPanelGroup(self.ai_panels, self.include_meta_fields)
+        def rag_panel_collection(self) -> RAGPanelCollection:
+            return RAGPanelCollection(self.rag_panels, self.include_meta_fields)
 
-        def get_ai_content(self) -> str:
-            return self.ai_panel_group.get_ai_content(self)
+        def get_markdown_content(self) -> str:
+            return self.rag_panel_colllection.get_markdown_content(self)
 
-        def get_ai_fields(self) -> list[str]:
-            fields: list[str] = [ai_panel.field_name for ai_panel in self.ai_panels]
+        def get_rag_fields(self) -> list[str]:
+            fields: list[str] = [rag_panel.field_name for rag_panel in self.rag_panels]
             if self.include_meta_fields:
                 fields.extend(META_FIELDS)
             return fields
 
-        def to_ai_json(self) -> AIPageJSON:
-            return self.ai_panel_group.to_ai_json(self)
+        def get_rag_indexable_data(self) -> RAGIndexableData:
+            return self.rag_panel_collection.get_rag_indexable_data(self)
 
-        cls.ai_panel_group = ai_panel_group
-        cls.get_ai_content = get_ai_content
-        cls.get_ai_fields = get_ai_fields
-        cls.to_ai_json = to_ai_json
+        cls.rag_panel_collection = rag_panel_collection
+        cls.get_markdown_content = get_markdown_content
+        cls.get_rag_fields = get_rag_fields
+        cls.get_rag_indexable_data = get_rag_indexable_data
         return cls
     return decorator

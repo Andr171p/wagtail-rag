@@ -2,6 +2,8 @@ import hashlib
 import json
 
 from django.core.cache import cache
+from html_to_markdown import convert_to_markdown
+from wagtail.blocks import StreamValue
 from wagtail.models import Page
 
 from .models import RAGSettings
@@ -53,3 +55,23 @@ def get_page_hash(page: Page) -> str:
         content["content"] = " ".join(search_content)
     content_string = json.dumps(content, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(content_string.encode("utf-8")).hexdigest()
+
+
+def convert_stream_field_to_markdown(stream_field: StreamValue) -> str:
+    parts: list[str] = []
+    for block in stream_field:
+        block_value = block.value
+        if hasattr(block_value, "source") and isinstance(block_value.source, str):
+            parts.append(convert_to_markdown(block_value.source))
+        elif isinstance(block_value, dict):
+            block_content: list[str] = []
+            for key, value in block_value.items():
+                if isinstance(value, str):
+                    block_content.append(f"**{key}**: {value}")
+                elif hasattr(value, "source"):
+                    block_content.append(f"**{key}**: {convert_to_markdown(value.source)}")
+            if block_content:
+                parts.append("\n".join(block_content))
+        elif isinstance(block_value, str):
+            parts.append(block_value)
+    return "\n\n".join(parts)

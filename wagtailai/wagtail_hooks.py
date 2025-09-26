@@ -1,7 +1,6 @@
 from typing import ClassVar
 
 from wagtail import hooks
-from wagtail.admin.viewsets.chooser import ChooserViewSet
 from wagtail.admin.viewsets.model import ModelViewSet
 
 from .models import RAGSettings

@@ -50,13 +50,13 @@ from django.db import models
 from wagtail.models import Page
 from wagtail.fields import RichTextField
 from wagtail.admin.panels import FieldPanel
-from wagtailai.panels import AIPanel, ai_indexable
+from wagtailai.panels import RAGFieldPanel, register_rag_indexable
 
 
-@ai_indexable(
-    AIPanel("headline"),
-    AIPanel("intro"),
-    AIPanel("body"), 
+@register_rag_indexable(
+    RAGFieldPanel("headline"),
+    RAGFieldPanel("intro"),
+    RAGFieldPanel("body"), 
     include_meta=True
 )
 class MyPage(Page):
